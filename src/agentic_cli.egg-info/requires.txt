@@ -1,0 +1,12 @@
+prompt-toolkit>=3.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+httpx>=0.25.0
+pillow>=10.0.0
+pyyaml>=6.0.0
+setuptools>=82.0.0
+
+[dev]
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+ruff>=0.1.0
