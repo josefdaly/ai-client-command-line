@@ -1,5 +1,7 @@
 import sys
 from pathlib import Path
+from datetime import datetime
+import time
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
@@ -16,13 +18,13 @@ from .tools import ShellTool, FileTool, ScreenTool
 style = Style.from_dict(
     {
         "prompt": "ansigreen bold",
-        "response": "ansiyellow",
+        "response": "ansicyan",
         "error": "ansired bold",
     }
 )
 
 
-def create_agent(config: Config) -> Agent:
+def create_agent(config: Config, status_callback=None) -> Agent:
     llm_config = config.llm
     llm_client = get_llm_client(
         provider=llm_config.provider,
@@ -45,17 +47,28 @@ def create_agent(config: Config) -> Agent:
         ScreenTool(),
     ]
 
-    return Agent(llm_client, tools)
+    return Agent(llm_client, tools, status_callback=status_callback)
 
 
 def run_cli(config: Config = None):
     if config is None:
         config = Config.load()
 
-    print("Initializing agentic-cli...")
+    print("🤖 Starting agentic-cli...")
+
+    def status_handler(status: str, message: str):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        symbols = {
+            "thinking": "💭",
+            "using_tool": "🔧",
+            "tool_complete": "✅",
+            "done": "🎉",
+        }
+        symbol = symbols.get(status, "•")
+        print(f"  {symbol} [{timestamp}] {message}")
 
     try:
-        agent = create_agent(config)
+        agent = create_agent(config, status_callback=status_handler)
     except Exception as e:
         print(f"Failed to initialize agent: {e}")
         sys.exit(1)
@@ -69,15 +82,15 @@ def run_cli(config: Config = None):
         style=style,
     )
 
-    print(f"Connected to {config.llm.provider} ({config.llm.model})")
+    print(f"✨ Connected to {config.llm.model} at {config.llm.base_url}")
     print("Type 'exit' or 'quit' to end the session, 'reset' to clear conversation")
-    print("---")
+    print("──────────────────────────────────────────────────")
 
     while True:
         try:
             user_input = session.prompt(">>> ", style=style)
         except KeyboardInterrupt:
-            print("\nExiting...")
+            print("\n👋 Exiting...")
             break
         except EOFError:
             break
@@ -88,19 +101,23 @@ def run_cli(config: Config = None):
             continue
 
         if user_input.lower() in ("exit", "quit"):
-            print("Goodbye!")
+            print("👋 Goodbye! Have a great day!")
             break
 
         if user_input.lower() == "reset":
             agent.reset()
-            print("Conversation reset.")
+            print("🗑️  Conversation reset.")
             continue
 
         try:
+            start_time = time.time()
             response = agent.chat(user_input)
-            print(f"\n{response}\n")
+            elapsed = time.time() - start_time
+
+            print(f"\n{response}")
+            print(f"\n⏱️  Completed in {elapsed:.2f}s\n")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"❌ Error: {e}")
 
 
 def main():
