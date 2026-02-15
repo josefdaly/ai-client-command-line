@@ -13,6 +13,7 @@ class LLMConfig(BaseModel):
     model: str = "qwen3:30b-a3b"
     temperature: float = 0.7
     max_tokens: int = 4096
+    api_key: Optional[str] = None
 
 
 class ToolConfig(BaseModel):

@@ -127,14 +127,24 @@ def main():
     parser.add_argument("--config", type=Path, help="Path to config file")
     parser.add_argument("--model", type=str, help="Override model")
     parser.add_argument("--url", type=str, help="Override Ollama URL")
+    parser.add_argument("--provider", type=str, help="Override provider (ollama, opencode)")
+    parser.add_argument("--api-key", type=str, help="Override API key")
     args = parser.parse_args()
 
     config = Config.load(args.config)
 
     if args.model:
         config.llm.model = args.model
+
     if args.url:
         config.llm.base_url = args.url
+    elif args.provider == "opencode":
+        config.llm.base_url = "https://opencode.ai/zen/v1"
+
+    if args.provider:
+        config.llm.provider = args.provider
+    if args.api_key:
+        config.llm.api_key = args.api_key
 
     run_cli(config)
 
