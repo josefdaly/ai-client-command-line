@@ -13,23 +13,28 @@ A Python-based agentic platform for controlling your computer via semantic comma
 ## Prerequisites
 
 - Python 3.9+
+- [uv](https://github.com/astral-sh/uv) package manager
 - [Ollama](https://ollama.ai) installed and running
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Install uv
 
 ```bash
-pip install -e .
+# macOS
+brew install uv
+
+# Or via curl
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Or install manually:
+### 2. Install Dependencies
 
 ```bash
-pip install prompt-toolkit pydantic pydantic-settings httpx pillow pyyaml
+uv sync
 ```
 
-### 2. Pull an Ollama Model
+### 3. Pull an Ollama Model
 
 ```bash
 ollama pull llama3.2
@@ -66,7 +71,7 @@ tools:
 ### Interactive Mode
 
 ```bash
-python3 -m agentic_cli
+uv run src/agentic_cli
 ```
 
 Commands:
@@ -77,7 +82,7 @@ Commands:
 ### Command Line Options
 
 ```bash
-python3 -m agentic_cli --model llama3.2 --url http://localhost:11434
+uv run src/agentic_cli --model llama3.2 --url http://localhost:11434
 ```
 
 ## Architecture
@@ -225,12 +230,12 @@ config = Config.load(path="/path/to/config.yaml")
 ## Testing
 
 ```bash
-python3 -m pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 With coverage:
 ```bash
-python3 -m pytest tests/ --cov=src/agentic_cli
+uv run pytest tests/ --cov=src/agentic_cli
 ```
 
 ## Security Notes
