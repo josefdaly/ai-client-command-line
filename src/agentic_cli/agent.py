@@ -1,3 +1,4 @@
+import json
 from typing import Optional, Callable
 from pydantic import BaseModel
 
@@ -17,6 +18,7 @@ class Agent:
         self.tools = {t.name: t for t in tools}
         self.messages: list[Message] = []
         self.status_callback = status_callback
+        self.total_usage: dict = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
         if system_prompt:
             self.messages.append(Message(role="system", content=system_prompt))
@@ -42,13 +44,19 @@ Always confirm when a task is complete."""
         system_msg = self.messages[0] if self.messages else Message(role="system", content="")
         self.messages = [system_msg]
 
-    def chat(self, user_input: str) -> str:
+    def chat(self, user_input: str) -> tuple[str, dict]:
         self.messages.append(Message(role="user", content=user_input))
 
         response = self._execute_loop()
 
         self.messages.append(Message(role="assistant", content=response.content))
-        return response.content
+
+        if response.usage:
+            self.total_usage["prompt_tokens"] += response.usage.get("prompt_tokens", 0)
+            self.total_usage["completion_tokens"] += response.usage.get("completion_tokens", 0)
+            self.total_usage["total_tokens"] += response.usage.get("total_tokens", 0)
+
+        return response.content, self.total_usage
 
     def _execute_loop(self, max_iterations: int = 10) -> ChatResponse:
         response: Optional[ChatResponse] = None
@@ -69,16 +77,19 @@ Always confirm when a task is complete."""
                         Message(
                             role="tool",
                             content=error_msg,
-                            tool_call_id=tc.name,
+                            tool_call_id=tc.id,
                         )
                     )
                     continue
 
                 self._emit_status("using_tool", f"Running {tc.name}...")
-                result = tool.execute(**tc.arguments)
+                args = tc.arguments
+                if isinstance(args, str):
+                    args = json.loads(args)
+                result = tool.execute(**args)
                 self._emit_status("tool_complete", f"{tc.name} finished")
 
-                tool_result_msg = self._format_tool_result(tc.name, result)
+                tool_result_msg = self._format_tool_result(tc.name, tc.id, result)
                 self.messages.append(tool_result_msg)
 
             if not response.tool_calls:
@@ -86,16 +97,18 @@ Always confirm when a task is complete."""
 
         return response or ChatResponse(content="")
 
-    def _format_tool_result(self, tool_name: str, result: ToolResult) -> Message:
+    def _format_tool_result(
+        self, tool_name: str, tool_call_id: Optional[str], result: ToolResult
+    ) -> Message:
         if result.success:
-            content = f"Result: {result.result}"
+            content = f"Tool '{tool_name}' result: {result.result}"
         else:
-            content = f"Error: {result.error}"
+            content = f"Tool '{tool_name}' error: {result.error}"
 
         return Message(
-            role="tool",
+            role="user",
             content=content,
-            tool_call_id=tool_name,
+            tool_call_id=None,
         )
 
     def get_history(self) -> list[Message]:

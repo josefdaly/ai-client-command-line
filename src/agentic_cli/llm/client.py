@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 from pydantic import BaseModel
+import httpx
 
 
 class ToolCall(BaseModel):
+    id: Optional[str] = None
     name: str
     arguments: dict[str, Any]
 
@@ -18,6 +20,7 @@ class Message(BaseModel):
 class ChatResponse(BaseModel):
     content: str
     tool_calls: Optional[list[ToolCall]] = None
+    usage: Optional[dict] = None
 
 
 class LLMClient(ABC):
@@ -75,7 +78,11 @@ class OllamaClient(LLMClient):
                 for tc in data["message"]["tool_calls"]
             ]
 
-        return ChatResponse(content=data["message"]["content"], tool_calls=tool_calls)
+        return ChatResponse(
+            content=data["message"]["content"],
+            tool_calls=tool_calls,
+            usage=data.get("usage"),
+        )
 
     def get_available_models(self) -> list[str]:
         response = self.client.get("/api/tags")
@@ -124,6 +131,7 @@ class OpenCodeClient(LLMClient):
         if tools:
             payload["tools"] = tools
 
+        data: dict = {"choices": []}
         response = self.client.post("/chat/completions", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
@@ -135,22 +143,24 @@ class OpenCodeClient(LLMClient):
                 content = choice["message"].get("content", "")
                 tool_calls = None
                 if choice["message"].get("tool_calls"):
-                    tool_calls = [
-                        ToolCall(name=tc["function"]["name"], arguments=tc["function"]["arguments"])
-                        for tc in choice["message"]["tool_calls"]
-                    ]
-                return ChatResponse(content=content, tool_calls=tool_calls)
+                    tool_calls = []
+                    for tc in choice["message"]["tool_calls"]:
+                        func = tc["function"]
+                        args = func.get("arguments")
+                        if isinstance(args, str):
+                            import json
+
+                            args = json.loads(args)
+                        tool_calls.append(
+                            ToolCall(id=tc.get("id"), name=func["name"], arguments=args)
+                        )
+                return ChatResponse(
+                    content=content,
+                    tool_calls=tool_calls,
+                    usage=data.get("usage"),
+                )
 
         return ChatResponse(content=str(data))
-
-        tool_calls = None
-        if data.get("message", {}).get("tool_calls"):
-            tool_calls = [
-                ToolCall(name=tc["function"]["name"], arguments=tc["function"]["arguments"])
-                for tc in data["message"]["tool_calls"]
-            ]
-
-        return ChatResponse(content=data["message"]["content"], tool_calls=tool_calls)
 
     def get_available_models(self) -> list[str]:
         headers = {}

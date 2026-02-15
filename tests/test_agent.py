@@ -35,9 +35,10 @@ class TestAgent:
         tools = [ShellTool()]
         agent = Agent(mock_llm, tools)
 
-        response = agent.chat("Hello")
+        response, usage = agent.chat("Hello")
 
         assert response == "Response!"
+        assert isinstance(usage, dict)
         assert len(agent.messages) == 3  # system + user + assistant
 
     def test_agent_reset(self):

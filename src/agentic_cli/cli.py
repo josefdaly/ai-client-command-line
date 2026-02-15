@@ -111,11 +111,16 @@ def run_cli(config: Config = None):
 
         try:
             start_time = time.time()
-            response = agent.chat(user_input)
+            response, usage = agent.chat(user_input)
             elapsed = time.time() - start_time
 
             print(f"\n{response}")
-            print(f"\n⏱️  Completed in {elapsed:.2f}s\n")
+            prompt_toks = usage.get("prompt_tokens", 0)
+            comp_toks = usage.get("completion_tokens", 0)
+            total_toks = usage.get("total_tokens", 0)
+            print(
+                f"\n⏱️  Completed in {elapsed:.2f}s • {prompt_toks:,} in • {comp_toks:,} out • {total_toks:,} total\n"
+            )
         except Exception as e:
             print(f"❌ Error: {e}")
 
