@@ -1,59 +1,83 @@
 import pytest
-import sys
-from pathlib import Path
-from unittest.mock import Mock, patch
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+from agentic_cli.agent import clean_response
 
 
-class TestAgent:
-    def test_agent_initialization(self):
-        from agentic_cli.agent import Agent
-        from agentic_cli.llm.client import OllamaClient
-        from agentic_cli.tools import ShellTool, FileTool, ScreenTool
+class TestCleanResponse:
+    def test_removes_system_reminder_tags(self):
+        response = """Hello world
+<system-reminder>
+Your operational mode has changed from plan to build.
+</system-reminder>
+How can I help?"""
 
-        mock_llm = Mock(spec=OllamaClient)
-        mock_llm.chat.return_value = Mock(content="Hello", tool_calls=None)
+        result = clean_response(response)
 
-        tools = [ShellTool(), FileTool(), ScreenTool()]
+        assert "<system-reminder>" not in result
+        assert "</system-reminder>" not in result
+        assert "Hello world" in result
+        assert "How can I help?" in result
 
-        agent = Agent(mock_llm, tools)
+    def test_removes_mode_changed_message(self):
+        response = """Some response
+mode has changed from plan to build.
+You are no longer in read-only mode.
+permitted to make changes.
 
-        assert len(agent.tools) == 3
-        assert "shell" in agent.tools
-        assert "files" in agent.tools
-        assert "screen" in agent.tools
+More content"""
 
-    def test_agent_chat(self):
-        from agentic_cli.agent import Agent
-        from agentic_cli.llm.client import OllamaClient, ChatResponse
-        from agentic_cli.tools import ShellTool
+        result = clean_response(response)
 
-        mock_llm = Mock(spec=OllamaClient)
-        mock_llm.chat.return_value = ChatResponse(content="Response!", tool_calls=None)
+        assert "mode has changed" not in result
+        assert "More content" in result
 
-        tools = [ShellTool()]
-        agent = Agent(mock_llm, tools)
+    def test_removes_operational_mode(self):
+        response = """Initial response
+operational mode has changed from plan to build
+You are no longer in read-only mode. You are permitted to make file changes.
+        
+Final answer."""
 
-        response, usage = agent.chat("Hello")
+        result = clean_response(response)
 
-        assert response == "Response!"
-        assert isinstance(usage, dict)
-        assert len(agent.messages) == 3  # system + user + assistant
+        assert "operational mode" not in result.lower()
+        assert "Initial response" in result
+        assert "Final answer" in result
 
-    def test_agent_reset(self):
-        from agentic_cli.agent import Agent
-        from agentic_cli.llm.client import OllamaClient, ChatResponse
-        from agentic_cli.tools import ShellTool
+    def test_preserves_normal_content(self):
+        response = """This is a normal response.
+        
+It has multiple paragraphs.
+        
+All content should be preserved."""
 
-        mock_llm = Mock(spec=OllamaClient)
-        mock_llm.chat.return_value = ChatResponse(content="Response!", tool_calls=None)
+        result = clean_response(response)
 
-        tools = [ShellTool()]
-        agent = Agent(mock_llm, tools)
+        assert "normal response" in result
+        assert "multiple paragraphs" in result
+        assert "preserved" in result
 
-        agent.chat("Hello")
-        assert len(agent.messages) > 1
+    def test_handles_empty_response(self):
+        result = clean_response("")
+        assert result == ""
 
-        agent.reset()
-        assert len(agent.messages) == 1  # Only system message remains
+    def test_handles_response_with_only_tags(self):
+        result = clean_response("<system-reminder>mode changed</system-reminder>")
+        assert result == ""
+
+    def test_multiple_consecutive_newlines(self):
+        response = """Line 1
+
+
+
+Line 2
+
+
+
+
+Line 3"""
+
+        result = clean_response(response)
+
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" in result

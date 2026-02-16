@@ -11,7 +11,7 @@ class TestConfig:
         config = Config()
 
         assert config.llm.provider == "ollama"
-        assert config.llm.model == "llama3.2"
+        assert config.llm.model == "qwen3:30b-a3b"
         assert config.tools.shell_timeout == 30
         assert len(config.tools.forbidden_commands) > 0
 
@@ -39,4 +39,4 @@ class TestConfig:
         config = Config.load(Path("/nonexistent/config.yaml"))
 
         assert config.llm.provider == "ollama"
-        assert config.llm.model == "llama3.2"
+        assert config.llm.model == "qwen3:30b-a3b"
