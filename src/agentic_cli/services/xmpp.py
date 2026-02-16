@@ -1,13 +1,16 @@
 import os
 import asyncio
 import ssl
+import sys
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
 
-import backports.ssl_match_hostname
+# Only apply macOS Python 3.12 fix
+if sys.platform == "darwin" and sys.version_info >= (3, 12):
+    import backports.ssl_match_hostname
 
-ssl.match_hostname = backports.ssl_match_hostname.match_hostname
+    ssl.match_hostname = backports.ssl_match_hostname.match_hostname
 
 import aioxmpp
 from aioxmpp import JID
