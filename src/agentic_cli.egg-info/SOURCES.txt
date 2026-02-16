@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 setup.py
 src/agentic_cli/__init__.py

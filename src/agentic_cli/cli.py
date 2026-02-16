@@ -114,7 +114,13 @@ def run_cli(config: Config = None):
             response, usage = agent.chat(user_input)
             elapsed = time.time() - start_time
 
-            print(f"\n{response}")
+            import re
+
+            response = re.sub(
+                r"<system-reminder>.*?</system-reminder>", "", response, flags=re.DOTALL
+            ).strip()
+            if response:
+                print(f"\n{response}")
             prompt_toks = usage.get("prompt_tokens", 0)
             comp_toks = usage.get("completion_tokens", 0)
             total_toks = usage.get("total_tokens", 0)
