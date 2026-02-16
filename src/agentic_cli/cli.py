@@ -13,7 +13,7 @@ from prompt_toolkit.styles import Style
 from .config import Config
 from .agent import Agent
 from .llm.client import get_llm_client
-from .tools import ShellTool, FileTool, ScreenTool, XMPPTool
+from .tools import ShellTool, FileTool, ScreenTool, XMPPTool, SchedulerTool
 
 
 style = Style.from_dict(
@@ -47,6 +47,7 @@ def create_agent(config: Config, status_callback=None) -> Agent:
         ),
         ScreenTool(),
         XMPPTool(),
+        SchedulerTool(),
     ]
 
     return Agent(llm_client, tools, status_callback=status_callback)
