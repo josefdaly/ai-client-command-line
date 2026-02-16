@@ -13,6 +13,8 @@ dependencies = [
     "setuptools>=82.0.0",
     "python-dotenv>=1.0.0",
     "pytz>=2025.2",
+    "aioxmpp>=0.13.0",
+    "backports.ssl-match-hostname>=3.7.0.1; platform_system=='Darwin'",
 ]
 
 [project.optional-dependencies]

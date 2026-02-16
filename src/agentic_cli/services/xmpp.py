@@ -2,6 +2,7 @@ import os
 import asyncio
 import ssl
 import sys
+import threading
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -11,53 +12,6 @@ if sys.platform == "darwin" and sys.version_info >= (3, 12):
     import backports.ssl_match_hostname
 
     ssl.match_hostname = backports.ssl_match_hostname.match_hostname
-
-import aioxmpp
-from aioxmpp import JID
-from aioxmpp import Message
-from aioxmpp import PresenceManagedClient
-from aioxmpp.security_layer import make
-
-from .base import Service
-
-
-class XMPPService(Service):
-    def __init__(self, env_file: Optional[Path] = None):
-        self.env_file = env_file or Path(".env")
-        self._load_config()
-
-    def _load_config(self):
-        if self.env_file.exists():
-            load_dotenv(self.env_file)
-
-        self.jid = os.getenv("XMPP_JID")
-        self.password = os.getenv("XMPP_PASSWORD")
-
-        if not self.jid or not self.password:
-            raise ValueError("XMPP_JID and XMPP_PASSWORD must be set in .env file")
-
-    @property
-    def name(self) -> str:
-        return "xmpp"
-
-    def initialize(self) -> bool:
-        return True
-
-    def shutdown(self) -> None:
-        pass
-
-
-import os
-import asyncio
-import ssl
-import threading
-from pathlib import Path
-from typing import Optional
-from dotenv import load_dotenv
-
-import backports.ssl_match_hostname
-
-ssl.match_hostname = backports.ssl_match_hostname.match_hostname
 
 import aioxmpp
 from aioxmpp import JID
