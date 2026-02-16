@@ -16,6 +16,8 @@ src/agentic_cli/llm/client.py
 src/agentic_cli/services/__init__.py
 src/agentic_cli/services/base.py
 src/agentic_cli/services/scheduler.py
+src/agentic_cli/services/stt.py
+src/agentic_cli/services/tts.py
 src/agentic_cli/services/xmpp.py
 src/agentic_cli/tools/__init__.py
 src/agentic_cli/tools/base.py

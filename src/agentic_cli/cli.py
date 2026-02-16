@@ -3,17 +3,24 @@ import re
 from pathlib import Path
 from datetime import datetime
 import time
+from typing import Optional
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.styles import Style
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.key_binding import KeyBindings
 
 from .config import Config
 from .agent import Agent
 from .llm.client import get_llm_client
 from .tools import ShellTool, FileTool, ScreenTool, XMPPTool, SchedulerTool
+from .services.tts import TTSService
+from .services.stt import STTService
+
+voice_input = None
 
 
 style = Style.from_dict(
@@ -24,8 +31,15 @@ style = Style.from_dict(
     }
 )
 
+key_bindings = KeyBindings()
 
-def create_agent(config: Config, status_callback=None) -> Agent:
+
+@key_bindings.add("c-v")
+def voice_input_handler(event):
+    event.app.exit(result="__voice_input__")
+
+
+def create_agent(config: Config, status_callback=None, tts: Optional[TTSService] = None) -> Agent:
     llm_config = config.llm
     llm_client = get_llm_client(
         provider=llm_config.provider,
@@ -50,7 +64,9 @@ def create_agent(config: Config, status_callback=None) -> Agent:
         SchedulerTool(),
     ]
 
-    return Agent(llm_client, tools, status_callback=status_callback)
+    tts = TTSService()
+
+    return Agent(llm_client, tools, status_callback=status_callback, tts=tts)
 
 
 def run_cli(config: Config = None):
@@ -83,20 +99,57 @@ def run_cli(config: Config = None):
         history=FileHistory(history_file),
         auto_suggest=AutoSuggestFromHistory(),
         style=style,
+        key_bindings=key_bindings,
     )
+
+    stt_service = STTService()
 
     print(f"✨ Connected to {config.llm.model} at {config.llm.base_url}")
     print("Type 'exit' or 'quit' to end the session, 'reset' to clear conversation")
     print("──────────────────────────────────────────────────")
 
+    def wait_for_input():
+        if agent.tts:
+            agent.tts.wait_until_done()
+            while agent.tts.is_speaking:
+                time.sleep(0.1)
+            time.sleep(0.3)
+
+        print("\r🎤 Listening... (speak or type)", end="", flush=True)
+        text = stt_service.listen(timeout=None)
+        print("\r                       ", end="\r", flush=True)
+
+        if text:
+            if agent.tts:
+                agent.tts.speak("Got it")
+            print(f"  ✓ Heard")
+            return text
+
+        return None
+
     while True:
-        try:
-            user_input = session.prompt(">>> ", style=style)
-        except KeyboardInterrupt:
-            print("\n👋 Exiting...")
-            break
-        except EOFError:
-            break
+        text = wait_for_input()
+        if text:
+            user_input = text
+        else:
+            try:
+                user_input = session.prompt(">>> ", style=style)
+            except KeyboardInterrupt:
+                print("\n👋 Exiting...")
+                break
+            except EOFError:
+                break
+
+        if user_input == "__voice_input__":
+            text = stt_service.listen(timeout=None)
+            if text:
+                if agent.tts:
+                    agent.tts.speak("Got it")
+                print(f"  ✓ Heard")
+                user_input = text
+            else:
+                print("  ⚠️  No speech detected")
+                continue
 
         user_input = user_input.strip()
 
@@ -187,6 +240,7 @@ def main():
     parser.add_argument("--url", type=str, help="Override Ollama URL")
     parser.add_argument("--provider", type=str, help="Override provider (ollama, opencode)")
     parser.add_argument("--api-key", type=str, help="Override API key")
+    parser.add_argument("--no-tts", action="store_true", help="Disable text-to-speech")
     args = parser.parse_args()
 
     config = Config.load(args.config)

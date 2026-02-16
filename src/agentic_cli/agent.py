@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from agentic_cli.llm.client import LLMClient, Message, ChatResponse, ToolCall
 from agentic_cli.tools.base import Tool, ToolResult
+from agentic_cli.services.tts import TTSService
 
 
 def clean_response(content: str) -> str:
@@ -42,11 +43,13 @@ class Agent:
         tools: list[Tool],
         system_prompt: Optional[str] = None,
         status_callback: Optional[Callable[[str, str], None]] = None,
+        tts: Optional[TTSService] = None,
     ):
         self.llm = llm_client
         self.tools = {t.name: t for t in tools}
         self.messages: list[Message] = []
         self.status_callback = status_callback
+        self.tts = tts
         self.total_usage: dict = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
         if system_prompt:
@@ -75,6 +78,10 @@ Always confirm when a task is complete."""
         system_msg = self.messages[0] if self.messages else Message(role="system", content="")
         self.messages = [system_msg]
 
+    def speak(self, text: str):
+        if self.tts:
+            self.tts.speak_async(text)
+
     def chat(self, user_input: str) -> tuple[str, dict]:
         user_input = clean_response(user_input)
         self.messages.append(Message(role="user", content=user_input))
@@ -89,6 +96,8 @@ Always confirm when a task is complete."""
             self.total_usage["prompt_tokens"] += response.usage.get("prompt_tokens", 0)
             self.total_usage["completion_tokens"] += response.usage.get("completion_tokens", 0)
             self.total_usage["total_tokens"] += response.usage.get("total_tokens", 0)
+
+        self.speak(response.content)
 
         return response.content, self.total_usage
 
