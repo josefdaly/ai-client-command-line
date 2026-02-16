@@ -1,9 +1,38 @@
 import json
+import re
 from typing import Optional, Callable
 from pydantic import BaseModel
 
 from agentic_cli.llm.client import LLMClient, Message, ChatResponse, ToolCall
 from agentic_cli.tools.base import Tool, ToolResult
+
+
+def clean_response(content: str) -> str:
+    content = re.sub(
+        r"<system-reminder[^>]*>.*?</system-reminder>",
+        "",
+        content,
+        flags=re.DOTALL | re.IGNORECASE,
+    ).strip()
+    content = re.sub(
+        r"mode has changed.*?permitted.*?\n",
+        "",
+        content,
+        flags=re.IGNORECASE | re.DOTALL,
+    ).strip()
+    content = re.sub(
+        r"operational mode.*?(plan|build).*?(read-only|permitted)",
+        "",
+        content,
+        flags=re.IGNORECASE | re.DOTALL,
+    ).strip()
+    content = re.sub(
+        r"your operational mode has changed.*?tools as needed",
+        "",
+        content,
+        flags=re.IGNORECASE | re.DOTALL,
+    ).strip()
+    return content
 
 
 class Agent:
@@ -21,9 +50,11 @@ class Agent:
         self.total_usage: dict = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
         if system_prompt:
-            self.messages.append(Message(role="system", content=system_prompt))
+            self.messages.append(Message(role="system", content=clean_response(system_prompt)))
         else:
-            self.messages.append(Message(role="system", content=self._default_system_prompt()))
+            self.messages.append(
+                Message(role="system", content=clean_response(self._default_system_prompt()))
+            )
 
     def _emit_status(self, status: str, message: str):
         if self.status_callback:
@@ -45,9 +76,12 @@ Always confirm when a task is complete."""
         self.messages = [system_msg]
 
     def chat(self, user_input: str) -> tuple[str, dict]:
+        user_input = clean_response(user_input)
         self.messages.append(Message(role="user", content=user_input))
 
         response = self._execute_loop()
+
+        response.content = clean_response(response.content)
 
         self.messages.append(Message(role="assistant", content=response.content))
 

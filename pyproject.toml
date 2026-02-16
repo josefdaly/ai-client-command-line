@@ -11,6 +11,8 @@ dependencies = [
     "pillow>=10.0.0",
     "pyyaml>=6.0.0",
     "setuptools>=82.0.0",
+    "python-dotenv>=1.0.0",
+    "pytz>=2025.2",
 ]
 
 [project.optional-dependencies]

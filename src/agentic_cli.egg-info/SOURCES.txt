@@ -13,11 +13,15 @@ src/agentic_cli.egg-info/requires.txt
 src/agentic_cli.egg-info/top_level.txt
 src/agentic_cli/llm/__init__.py
 src/agentic_cli/llm/client.py
+src/agentic_cli/services/__init__.py
+src/agentic_cli/services/base.py
+src/agentic_cli/services/xmpp.py
 src/agentic_cli/tools/__init__.py
 src/agentic_cli/tools/base.py
 src/agentic_cli/tools/files.py
 src/agentic_cli/tools/screen.py
 src/agentic_cli/tools/shell.py
+src/agentic_cli/tools/xmpp.py
 tests/test_agent.py
 tests/test_config.py
 tests/test_llm.py

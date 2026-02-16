@@ -1,4 +1,5 @@
 import sys
+import re
 from pathlib import Path
 from datetime import datetime
 import time
@@ -12,7 +13,7 @@ from prompt_toolkit.styles import Style
 from .config import Config
 from .agent import Agent
 from .llm.client import get_llm_client
-from .tools import ShellTool, FileTool, ScreenTool
+from .tools import ShellTool, FileTool, ScreenTool, XMPPTool
 
 
 style = Style.from_dict(
@@ -45,6 +46,7 @@ def create_agent(config: Config, status_callback=None) -> Agent:
             deny_list=config.tools.file_deny_list,
         ),
         ScreenTool(),
+        XMPPTool(),
     ]
 
     return Agent(llm_client, tools, status_callback=status_callback)
@@ -114,11 +116,55 @@ def run_cli(config: Config = None):
             response, usage = agent.chat(user_input)
             elapsed = time.time() - start_time
 
-            import re
-
             response = re.sub(
-                r"<system-reminder>.*?</system-reminder>", "", response, flags=re.DOTALL
+                r"<system-reminder[^>]*>.*?</system-reminder>",
+                "",
+                response,
+                flags=re.DOTALL | re.IGNORECASE,
             ).strip()
+            response = re.sub(
+                r"mode has changed.*?permitted.*?\n", "", response, flags=re.IGNORECASE | re.DOTALL
+            ).strip()
+            response = re.sub(
+                r"operational mode.*?(plan|build).*?(read-only|permitted)",
+                "",
+                response,
+                flags=re.IGNORECASE | re.DOTALL,
+            ).strip()
+            response = re.sub(
+                r"your operational mode has changed.*?are needed",
+                "",
+                response,
+                flags=re.IGNORECASE | re.DOTALL,
+            ).strip()
+            response = re.sub(
+                r"\n*<.*?>.*?</.*?>\n*", "", response, flags=re.IGNORECASE | re.DOTALL
+            ).strip()
+            response = re.sub(
+                r"<system-reminder[^>]*>.*?</system-reminder>",
+                "",
+                response,
+                flags=re.DOTALL | re.IGNORECASE,
+            ).strip()
+            response = re.sub(
+                r"mode has changed.*?permitted.*?\n",
+                "",
+                response,
+                flags=re.IGNORECASE | re.DOTALL,
+            ).strip()
+            response = re.sub(
+                r"operational mode.*?(plan|build).*?(read-only|permitted)",
+                "",
+                response,
+                flags=re.IGNORECASE | re.DOTALL,
+            ).strip()
+            response = re.sub(
+                r"your operational mode has changed.*?tools as needed",
+                "",
+                response,
+                flags=re.IGNORECASE | re.DOTALL,
+            ).strip()
+            response = re.sub(r"\n{3,}", "\n\n", response).strip()
             if response:
                 print(f"\n{response}")
             prompt_toks = usage.get("prompt_tokens", 0)

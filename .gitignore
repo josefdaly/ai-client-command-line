@@ -1,2 +1,7 @@
 .aider*
 *.pyc
+.env
+
+# Mind simulation
+data/
+thoughts/

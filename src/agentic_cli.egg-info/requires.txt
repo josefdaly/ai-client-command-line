@@ -5,6 +5,8 @@ httpx>=0.25.0
 pillow>=10.0.0
 pyyaml>=6.0.0
 setuptools>=82.0.0
+python-dotenv>=1.0.0
+pytz>=2025.2
 
 [dev]
 pytest>=7.0.0
